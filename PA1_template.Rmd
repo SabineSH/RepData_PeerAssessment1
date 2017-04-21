@@ -1,25 +1,108 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducable Research: Course Project 1'
+author: "Sabine SH"
+date: "Monday, April 21, 2017"
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
 ---
 
+This is an R Markdown document showing the use of data from a personal activity monitoring device. The work was done as part of course "Reproducable Research". 
 
-## Loading and preprocessing the data
+### Loading and preprocessing the data
+activity: original data
+activity2: missing data ignored
+activitySum: aggregation on year (summation)
+```{r, echo=TRUE}
+activity <- read.csv("activity.csv")
+activity2 <- na.omit(activity)
+activitySum <- aggregate(steps ~ date, activity2, sum)
+
+```
+
+### What is mean total number of steps taken per day?
+
+Histogram on total number of steps taken per day:
+
+```{r, echo=TRUE}
+barplot(height=activitySum$steps, names.arg=activitySum$date, xlab="Day", ylab="Number of Steps", main="Total Number of Steps Taken per Day")
+```
 
 
+Calculation of mean total number of steps taken per day
+```{r, echo=TRUE}
+mean(activitySum$steps)
+```
+Calculation of median total number of steps taken per day 
+```{r, echo=TRUE}
+median(activitySum$steps)
+```
 
-## What is mean total number of steps taken per day?
+### What is the average daily activity pattern?
+
+First of all, we have to aggregate the data for each interval 
+```{r, echo=TRUE}
+activityInterval <- aggregate(steps ~ interval, activity, mean)
+```
+Here is the time series plot 
+```{r, echo=TRUE}
+plot(activityInterval$interval, activityInterval$steps, type = "l",xlab="Interval", ylab="Mean number of steps", main="What is the average daily activity pattern?")
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo=TRUE}
+activityInterval$interval[which.max(activityInterval$steps)]
+```
+### Imputing missing values
+
+Calculate and report the total number of missing values in the dataset
+```{r, echo=TRUE}
+table(is.na(activity))
+```
+As an approach, I will use the mean for each interval that was computed before and merge them with the original data
+```{r, echo=TRUE}
+activityM <- merge(activity, activityInterval, by = "interval")
+activityM$CalcSteps <- ifelse(is.na(activityM$steps.x),
+                        activityM$steps.y,
+                        activityM$steps.x
+                    )
+```
+Histogram of the total number of steps taken each day
+
+```{r, echo=TRUE}
+activitySumM <- aggregate(CalcSteps ~ date, activityM, sum)
+barplot(height=activitySumM$CalcSteps, names.arg=activitySumM$date, xlab="Day", ylab="Number of Steps", main="Total Number of Steps Taken per Day (with imputed missing values)")
+```
 
 
+Calculation of mean total number of steps taken per day
+```{r, echo=TRUE}
+mean(activitySumM$CalcSteps)
+```
+Calculation of median total number of steps taken per day 
+```{r, echo=TRUE}
+median(activitySumM$CalcSteps)
+```
 
-## What is the average daily activity pattern?
+These values differ only slightly from the estimates from the first parts.
 
+### Are there differences in activity patterns between weekdays and weekends?
 
+Creation of a new vector variable "day" and "weekday"
+```{r, echo=TRUE}
+activityM$day <- weekdays(as.Date(activityM$date))
+activityM$weekday <- ifelse(activityM$day %in% c("Sonntag","Samstag"),"weekend","weekday")
 
-## Imputing missing values
+```
 
+Creating a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken
+```{r, echo=TRUE}
+activityWD <- subset(activityM,activityM$weekday == "weekday")
+activityWE <- subset(activityM,activityM$weekday == "weekend")
+activityIntWD <- aggregate(CalcSteps ~ interval, activityWD, mean)
+activityIntWE <- aggregate(CalcSteps ~ interval, activityWE, mean)
 
-
-## Are there differences in activity patterns between weekdays and weekends?
+par(mfrow=c(2,1))
+plot(activityIntWD$interval, activityIntWD$CalcSteps, type = "l",xlab="Interval", ylab="Average number of steps", main="Weekdays")
+plot(activityIntWE$interval, activityIntWE$CalcSteps, type = "l",xlab="Interval", ylab="Average number of steps", main="Weekend")
+```
